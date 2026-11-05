@@ -1,16 +1,21 @@
-## Hi there 👋
 
-<!--
-**yuanouiiiiii/yuanouiiiiii** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+# hi, i'm gianna ♡
 
-Here are some ideas to get you started:
+i enjoy making little things on the internet — from creative experiments to ideas that slowly turn into something real.
 
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
--->
+this is a space for what i'm building, learning, and figuring out along the way.
+
+### little things in progress
+
+- **little film booth** — a web photobooth inspired by the feeling of film photography.
+- **lumirus** — an interactive space for learning russian, one lesson at a time.
+
+### outside of github
+
+i love photography, design, languages, and collecting little moments worth remembering.
+
+[instagram](https://instagram.com/diaryofagianna) · [substack](https://substack.com/@diaryofagianna) · [more about me](https://beacons.ai/diaryofagianna)
+
+---
+
+a little curious, always learning.
