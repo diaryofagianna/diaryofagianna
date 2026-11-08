@@ -4,10 +4,9 @@ i like making thoughtful little things on the internet — somewhere between des
 
 this is where i share experiments, small projects, and ideas i'm learning to bring to life.
 
-### little things in progress
+### a little project on github
 
-- **little film booth** — a web photobooth inspired by the feeling of film photography.
-- **lumirus** — an interactive space for learning russian, one lesson at a time.
+- **[little days](https://github.com/yuanouiiiiii/little-days)** — a gentle, local-first planner and personal journal for tasks, routines, and everyday notes. currently a release candidate, not a production-verified app.
 
 ### beyond the code
 
