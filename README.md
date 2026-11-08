@@ -12,7 +12,7 @@ this is a space for what i'm building, learning, and figuring out along the way.
 
 ### outside of github
 
-i love photography, design, languages, and collecting little moments worth remembering. i also create gentle illustrations and digital treasures in my little world, [the little gianna ✿](https://headless-zfovltxbtsf-diaryofagianna-140e.wix-site-host.com/).
+i love photography, design, languages, and collecting little moments worth remembering. i also create gentle illustrations and digital treasures in my little world.
 
 [instagram](https://www.instagram.com/diaryofagianna/) · [little letters](https://diaryofagianna.substack.com/) · [illustrations](https://www.behance.net/nguyenlamnhu1) · [all my links](https://beacons.ai/diaryofagianna)
 
