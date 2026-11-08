@@ -6,7 +6,7 @@ this is where i share experiments, small projects, and ideas i'm learning to bri
 
 ### a little project on github
 
-- **[little days](https://github.com/yuanouiiiiii/little-days)** — a gentle, local-first planner and personal journal for tasks, routines, and everyday notes. currently a release candidate, not a production-verified app.
+- **[little days](https://github.com/diaryofagianna/little-days)** — a gentle, local-first planner and personal journal for tasks, routines, and everyday notes. currently a release candidate, not a production-verified app.
 
 ### beyond the code
 
