@@ -93,7 +93,7 @@ async function restoreBackup(id){
 }
 function subscribe(){
  if(channel)client.removeChannel(channel);
- channel=client.channel('workbench-'+user.id).on('postgres_changes',{event:'UPDATE',schema:'public',table:'workbench_state',filter:'user_id=eq.'+user.id},payload=>{
+ channel=client.channel('workbench-'+user.id).on('postgres_changes',{event:'*',schema:'public',table:'workbench_state',filter:'user_id=eq.'+user.id},payload=>{
   const row=payload.new;if(!row||row.client_id===clientId||row.revision<=(remote?.revision||0))return;
   remote=row;lastRemoteAt=Date.now();say('Có bản cập nhật từ thiết bị khác. Chọn “Dùng bản cloud” hoặc “Merge local + cloud” để áp dụng.');
   showChoices(row);
