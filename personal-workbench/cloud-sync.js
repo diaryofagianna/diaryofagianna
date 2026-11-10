@@ -11,38 +11,58 @@ const clone=v=>JSON.parse(JSON.stringify(v));
 function localBackup(label='pre-sync'){
  try{const d=clone(A.data);const k='diaryofagianna.personal-workbench.cloud-backups';let h=JSON.parse(localStorage.getItem(k)||'[]');h.unshift({at:new Date().toISOString(),label,data:d});localStorage.setItem(k,JSON.stringify(h.slice(0,20)))}catch(e){console.warn('Could not make local safety copy',e)}
 }
-function mergeData(local,cloud){
- const out={...cloud,...local};
- const keys=['tasks','plans','habits','notes','events','mindNodes'];
- for(const key of keys){
-  const a=Array.isArray(cloud[key])?cloud[key]:[], b=Array.isArray(local[key])?local[key]:[];
-  const map=new Map(a.map(x=>[x.id||JSON.stringify(x),x]));
-  for(const item of b){const id=item.id||JSON.stringify(item),old=map.get(id);if(!old){map.set(id,item);continue}
-   const t=x=>Date.parse(x.updatedAt||x.updated||x.completedAt||x.createdAt||x.created||0)||0;
-   map.set(id,t(item)>=t(old)?{...old,...item}:{...item,...old});
-  }
-  out[key]=[...map.values()];
- }
- out.settings={...(cloud.settings||{}),...(local.settings||{})};
- return out;
-}
+function mergeData(local,cloud){return window.WorkbenchCloudCore.mergeData(local,cloud)}
 async function backupRemote(payload,label){
  const {error}=await client.from('workbench_backups').insert({user_id:user.id,payload,source:'sync',label});
  if(error)throw error;
 }
-async function writeRemote(payload,label='auto-sync'){
- if(!user||busy)return;
+async function writeRemote(payload,label='auto-sync',options={}){
+ if(!user)throw new Error('Chưa đăng nhập cloud.');
+ if(busy)throw new Error('Đang có một thao tác đồng bộ khác. Vui lòng thử lại.');
  busy=true;
+ const expectedRevision=Object.prototype.hasOwnProperty.call(options,'expectedRevision')?options.expectedRevision:(remote?.revision??null);
  try{
-  const {data:row,error:readError}=await client.from('workbench_state').select('revision').eq('user_id',user.id).maybeSingle();
+  const {data:current,error:readError}=await client.from('workbench_state').select('*').eq('user_id',user.id).maybeSingle();
   if(readError)throw readError;
-  const {error}=await client.from('workbench_state').upsert({user_id:user.id,payload,revision:(row?.revision||0)+1,client_id:clientId,mutation_id:crypto.randomUUID(),updated_at:new Date().toISOString()},{onConflict:'user_id'});
-  if(error)throw error;
-  say('Đã đồng bộ · '+new Date().toLocaleTimeString());
- }catch(e){console.error(e);say('Chưa đồng bộ: '+(e.message||'lỗi kết nối'))}
- finally{busy=false}
+  const currentRevision=current?.revision??null;
+  if(currentRevision!==expectedRevision){
+   remote=current;
+   const conflict=new Error('Cloud đã thay đổi trên thiết bị khác. Hãy tải bản mới và merge trước khi ghi tiếp.');
+   conflict.code='WORKBENCH_REVISION_CONFLICT';conflict.current=current;throw conflict;
+  }
+  const values={user_id:user.id,payload,revision:(currentRevision||0)+1,client_id:clientId,mutation_id:crypto.randomUUID(),updated_at:new Date().toISOString()};
+  let result;
+  if(current){
+   const {data,error}=await client.from('workbench_state').update(values).eq('user_id',user.id).eq('revision',currentRevision).select('*').maybeSingle();
+   if(error)throw error;
+   if(!data){
+    const {data:latest,error:latestError}=await client.from('workbench_state').select('*').eq('user_id',user.id).maybeSingle();
+    if(latestError)throw latestError;
+    remote=latest;
+    const conflict=new Error('Revision đã được thiết bị khác cập nhật. Không ghi đè dữ liệu mới.');
+    conflict.code='WORKBENCH_REVISION_CONFLICT';conflict.current=latest;throw conflict;
+   }
+   result=data;
+  }else{
+   const {data,error}=await client.from('workbench_state').insert(values).select('*').single();
+   if(error){if(error.code==='23505'){const {data:latest}=await client.from('workbench_state').select('*').eq('user_id',user.id).maybeSingle();remote=latest;const conflict=new Error('Một thiết bị khác vừa khởi tạo cloud. Dữ liệu local chưa được ghi đè.');conflict.code='WORKBENCH_REVISION_CONFLICT';conflict.current=latest;throw conflict}throw error}
+   result=data;
+  }
+  remote=result;
+  say('Đã đồng bộ · revision '+result.revision+' · '+new Date().toLocaleTimeString());
+  return result;
+ }catch(e){
+  console.error(e);
+  if(e.code==='WORKBENCH_REVISION_CONFLICT'){say(e.message);if(e.current)showChoices(e.current)}
+  else say('Chưa đồng bộ: '+(e.message||'lỗi kết nối'));
+  throw e;
+ }finally{busy=false}
 }
-function queueSync(){if(!user||busy)return;clearTimeout(timer);timer=setTimeout(()=>writeRemote(clone(A.data)),1100)}
+function queueSync(){
+ if(!user||busy)return;clearTimeout(timer);
+ const snapshot=clone(A.data),expectedRevision=remote?.revision??null;
+ timer=setTimeout(()=>writeRemote(snapshot,'auto-sync',{expectedRevision}).catch(()=>{}),1100);
+}
 async function loadRemote(){
  const {data,error}=await client.from('workbench_state').select('*').eq('user_id',user.id).maybeSingle();
  if(error)throw error;remote=data||null;return remote;
@@ -82,14 +102,14 @@ function showChoices(row){
  const el=$('#wbSyncChoices');if(!el)return;
  if(!row){el.innerHTML='<p class="muted" style="font-size:12px">Chọn cách khởi tạo dữ liệu cloud từ bản local hiện tại.</p><button class="btn" id="wbUploadLocal">Sao lưu local lên cloud</button>';$('#wbUploadLocal').onclick=async()=>{localBackup('before-first-cloud-upload');await writeRemote(clone(A.data),'first-upload')};return}
  el.innerHTML='<p class="muted" style="font-size:12px">Dữ liệu local và cloud được giữ riêng cho đến khi bạn chọn. Trước khi áp dụng, hệ thống sẽ tạo bản sao local và bản backup cloud.</p><div class="row" style="flex-wrap:wrap"><button class="btn" id="wbMerge">Merge local + cloud</button><button class="btn soft" id="wbUseCloud">Dùng bản cloud</button><button class="btn rose" id="wbUseLocal">Thay cloud bằng local</button></div><div style="margin-top:12px"><button class="btn soft small" id="wbListBackups">Xem bản phục hồi cloud</button><div id="wbBackupList"></div></div>';
- $('#wbMerge').onclick=async()=>{try{localBackup('before-merge');await backupRemote(row.payload,'before-merge');A.data=mergeData(clone(A.data),row.payload);A.save();A.render();await writeRemote(clone(A.data),'merge');say('Đã merge local + cloud và tạo backup.')}catch(e){say('Merge lỗi: '+e.message)}};
- $('#wbUseCloud').onclick=async()=>{if(!confirm('Thay dữ liệu đang có trên thiết bị này bằng dữ liệu cloud? Bản local và bản cloud hiện tại sẽ được sao lưu trước.'))return;try{localBackup('before-cloud-restore');await backupRemote(row.payload,'before-cloud-restore');A.data=clone(row.payload);A.save();A.render();say('Đã nạp dữ liệu cloud vào thiết bị này và tạo backup.')}catch(e){say('Khôi phục lỗi: '+e.message)}};
- $('#wbUseLocal').onclick=async()=>{if(!confirm('Thay dữ liệu cloud bằng bản local trên thiết bị này? Bản cloud hiện tại sẽ được sao lưu trước.'))return;try{localBackup('before-overwrite-cloud');await backupRemote(row.payload,'before-overwrite-cloud');await writeRemote(clone(A.data),'local-replaces-cloud');say('Đã cập nhật cloud từ local.')}catch(e){say('Cập nhật lỗi: '+e.message)}};
+ $('#wbMerge').onclick=async()=>{try{localBackup('before-merge');await backupRemote(row.payload,'before-merge');A.data=mergeData(clone(A.data),row.payload);remote=row;A.save();A.render();await writeRemote(clone(A.data),'merge',{expectedRevision:row.revision});say('Đã merge local + cloud · revision '+remote.revision+' · backup đã tạo.')}catch(e){say('Merge chưa hoàn tất: '+e.message)}};
+ $('#wbUseCloud').onclick=async()=>{if(!confirm('Thay dữ liệu đang có trên thiết bị này bằng dữ liệu cloud? Bản local và bản cloud hiện tại sẽ được sao lưu trước.'))return;try{localBackup('before-cloud-restore');await backupRemote(row.payload,'before-cloud-restore');remote=row;A.data=clone(row.payload);A.save();A.render();say('Đã khôi phục cloud vào thiết bị · revision '+row.revision+' · backup đã tạo.')}catch(e){say('Khôi phục lỗi: '+e.message)}};
+ $('#wbUseLocal').onclick=async()=>{if(!confirm('Thay dữ liệu cloud bằng bản local trên thiết bị này? Bản cloud hiện tại sẽ được sao lưu trước.'))return;try{localBackup('before-overwrite-cloud');await backupRemote(row.payload,'before-overwrite-cloud');await writeRemote(clone(A.data),'local-replaces-cloud',{expectedRevision:row.revision});say('Đã cập nhật cloud · revision '+remote.revision+' · backup đã tạo.')}catch(e){say('Cập nhật lỗi: '+e.message)}};
  $('#wbListBackups').onclick=async()=>{const {data,error}=await client.from('workbench_backups').select('id,label,source,created_at').eq('user_id',user.id).order('created_at',{ascending:false}).limit(20);if(error){say(error.message);return}const list=$('#wbBackupList');list.innerHTML=(data||[]).map(v=>'<div class="list-item"><div class="grow"><b>'+esc(v.label||v.source)+'</b><p>'+new Date(v.created_at).toLocaleString()+'</p></div><button class="btn soft small" data-wb-restore="'+v.id+'">Restore</button></div>').join('')||'<p class="muted">Chưa có bản backup.</p>';list.querySelectorAll('[data-wb-restore]').forEach(b=>b.onclick=()=>restoreBackup(b.dataset.wbRestore))};
 }
 async function restoreBackup(id){
  if(!confirm('Khôi phục backup này vào Workbench? Dữ liệu hiện tại sẽ được sao lưu trước.'))return;
- try{const {data,error}=await client.from('workbench_backups').select('payload').eq('id',id).single();if(error)throw error;localBackup('before-cloud-backup-restore');await backupRemote(clone(A.data),'before-cloud-backup-restore');A.data=clone(data.payload);A.save();A.render();await writeRemote(clone(A.data),'restore-backup');say('Đã khôi phục backup.')}catch(e){say('Không khôi phục được: '+e.message)}
+ try{const {data,error}=await client.from('workbench_backups').select('payload').eq('id',id).single();if(error)throw error;localBackup('before-cloud-backup-restore');await backupRemote(clone(A.data),'before-cloud-backup-restore');const expectedRevision=remote?.revision??null;A.data=clone(data.payload);A.save();A.render();await writeRemote(clone(A.data),'restore-backup',{expectedRevision});say('Đã khôi phục backup · revision '+remote.revision+'.')}catch(e){say('Không khôi phục được: '+e.message)}
 }
 function subscribe(){
  if(channel)client.removeChannel(channel);
