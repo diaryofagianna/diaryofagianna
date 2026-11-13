@@ -1,0 +1,4 @@
+const test=require('node:test');const assert=require('node:assert/strict');const {mergeData}=require('../cloud-sync-core.js');
+test('preserves unknown top-level and nested fields from both devices',()=>{const out=mergeData({tasks:[{id:'a',title:'local'}],custom:{localOnly:1,nested:{a:1}},unknownLocal:true},{tasks:[{id:'a',status:'done'},{id:'b'}],custom:{cloudOnly:2,nested:{b:2}},unknownCloud:true});assert.deepEqual(out.tasks,[{id:'a',title:'local',status:'done'},{id:'b'}]);assert.deepEqual(out.custom,{localOnly:1,cloudOnly:2,nested:{a:1,b:2}});assert.equal(out.unknownLocal,true);assert.equal(out.unknownCloud,true)});
+test('unions primitive arrays without dropping unique values',()=>assert.deepEqual(mergeData({tags:['local','same']},{tags:['cloud','same']}),{tags:['cloud','same','local']}));
+test('retains cloud-only fields when local has no value',()=>assert.deepEqual(mergeData({}, {newFeature:{enabled:true}}),{newFeature:{enabled:true}}));
