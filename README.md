@@ -20,7 +20,7 @@ one of my recent projects is **fengtu yicang** — a bilingual digital heritage 
 
 [explore the project](https://fengtu-yicang.floot.app/) · [view the source](https://github.com/diaryofagianna/fengtu-yicang)
 
-## selected projects
+## projects
 
 ### 01. 丰图义仓 — fengtu yicang
 
