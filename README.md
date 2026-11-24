@@ -30,6 +30,12 @@ a small project about preserving stories, discovering architecture, and making c
 
 [visit the experience](https://fengtu-yicang.floot.app/) · [github repository](https://github.com/diaryofagianna/fengtu-yicang)
 
+### 02. the little sound archive
+
+a little collection of sounds and moments, gathered and kept as a digital archive.
+
+[github repository](https://github.com/diaryofagianna/thelittlesoundarchive)
+
 more little projects and experiments will find their way here as they grow. ♡
 
 ## creative interests
